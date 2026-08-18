@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Клуб карате Закари — интерактивный граф</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6;   /* лагерь тренера */
+    --series-2:       #eb6834;   /* лагерь президента */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3987e5;
+      --series-2:       #d95926;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page:           #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3987e5;
+    --series-2:       #d95926;
+  }
+
+  html, body { margin: 0; }
+  body.viz-root {
+    background: var(--page);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--text-primary);
+    display: flex;
+    justify-content: center;
+    padding: 24px 12px 40px;
+  }
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 20px 12px;
+    max-width: 960px;
+    width: 100%;
+    position: relative;
+  }
+  h1 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
+  .subtitle {
+    font-size: 13px; color: var(--text-secondary);
+    margin: 0 0 10px; line-height: 1.45;
+  }
+  .legend {
+    display: flex; gap: 18px; align-items: center;
+    font-size: 12.5px; color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  .legend .dot {
+    display: inline-block; width: 10px; height: 10px;
+    border-radius: 50%; margin-right: 6px; vertical-align: -1px;
+  }
+  svg { display: block; width: 100%; height: auto; }
+  .graph-wrap { position: relative; }
+
+  .edge { stroke: var(--gridline); stroke-width: 1; }
+  .edge.lit-1 { stroke: var(--series-1); stroke-width: 2; }
+  .edge.lit-2 { stroke: var(--series-2); stroke-width: 2; }
+  .node { cursor: grab; }
+  .node:active { cursor: grabbing; }
+  .node circle { stroke: var(--surface-1); stroke-width: 2; }
+  .node text {
+    font-size: 10px; font-weight: 600; fill: #ffffff;
+    text-anchor: middle; pointer-events: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .node.dim { opacity: 0.25; }
+  .role-label {
+    font-size: 11.5px; font-weight: 600; fill: var(--text-secondary);
+    text-anchor: middle; pointer-events: none;
+  }
+
+  .tooltip {
+    position: absolute; pointer-events: none; display: none;
+    background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+    padding: 8px 12px; font-size: 12px; color: var(--text-secondary);
+    white-space: nowrap; z-index: 5;
+  }
+  .tooltip .val {
+    font-size: 13.5px; font-weight: 600; color: var(--text-primary);
+  }
+  .tooltip .key {
+    display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+    margin-right: 6px;
+  }
+
+  details { margin-top: 8px; font-size: 13px; color: var(--text-secondary); }
+  summary { cursor: pointer; padding: 4px 0; }
+  table { border-collapse: collapse; margin: 8px 0 10px; }
+  th, td {
+    padding: 3px 16px 3px 0; border-bottom: 1px solid var(--gridline);
+    font-weight: 400; text-align: right; font-variant-numeric: tabular-nums;
+  }
+  td.t, th.t { text-align: left; }
+  th { color: var(--text-muted); font-size: 12px; }
+  .hint { font-size: 11.5px; color: var(--text-muted); margin: 6px 0 0; }
+</style>
+</head>
+<body class="viz-root">
+<div class="card">
+  <h1>Клуб карате Закари</h1>
+  <p class="subtitle">
+    34 участника секции карате, 78 дружеских связей (Уэйн Закари, 1977).
+    После конфликта клуб раскололся на два лагеря — и раскол прошёл
+    почти точно по структуре дружбы. Размер вершины — число друзей.
+  </p>
+  <div class="legend">
+    <span><span class="dot" style="background: var(--series-1)"></span>лагерь тренера (вершина 1)</span>
+    <span><span class="dot" style="background: var(--series-2)"></span>лагерь президента (вершина 34)</span>
+  </div>
+  <div class="graph-wrap" id="wrap">
+    <svg id="chart" viewBox="0 0 920 600" aria-label="Граф дружеских связей клуба карате: 34 вершины двух цветов по лагерям раскола"></svg>
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+  <details>
+    <summary>Таблица участников</summary>
+    <table>
+      <thead><tr><th>№</th><th class="t">Лагерь</th><th>Друзей</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </details>
+  <p class="hint">Вершины можно таскать мышкой — граф спружинит. Наведение подсвечивает друзей вершины.</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // --- Данные: рёбра графа Закари (те же, что в od02/graph.py) ---
+  var EDGES = [
+    [1,2],[1,3],[1,4],[1,5],[1,6],[1,7],[1,8],[1,9],[1,11],[1,12],[1,13],
+    [1,14],[1,18],[1,20],[1,22],[1,32],[2,3],[2,4],[2,8],[2,14],[2,18],
+    [2,20],[2,22],[2,31],[3,4],[3,8],[3,9],[3,10],[3,14],[3,28],[3,29],
+    [3,33],[4,8],[4,13],[4,14],[5,7],[5,11],[6,7],[6,11],[6,17],[7,17],
+    [9,31],[9,33],[9,34],[10,34],[14,34],[15,33],[15,34],[16,33],[16,34],
+    [19,33],[19,34],[20,34],[21,33],[21,34],[23,33],[23,34],[24,26],
+    [24,28],[24,30],[24,33],[24,34],[25,26],[25,28],[25,32],[26,32],
+    [27,30],[27,34],[28,34],[29,32],[29,34],[30,33],[30,34],[31,33],
+    [31,34],[32,33],[32,34],[33,34]
+  ];
+  // Лагеря после раскола (данные из исследования Закари).
+  var MR_HI = [1,2,3,4,5,6,7,8,9,11,12,13,14,17,18,20,22];
+
+  var W = 920, H = 600, CX = W / 2, CY = H / 2;
+  var N = 34;
+
+  // --- Вершины: степень, лагерь, стартовые позиции по кругу ---
+  var nodes = [];
+  var degree = {};
+  EDGES.forEach(function (e) {
+    degree[e[0]] = (degree[e[0]] || 0) + 1;
+    degree[e[1]] = (degree[e[1]] || 0) + 1;
+  });
+  for (var id = 1; id <= N; id++) {
+    var angle = (id / N) * 2 * Math.PI;
+    nodes.push({
+      id: id,
+      deg: degree[id],
+      camp: MR_HI.indexOf(id) !== -1 ? 1 : 2,
+      r: 7 + 2.2 * Math.sqrt(degree[id]),
+      x: CX + 220 * Math.cos(angle),
+      y: CY + 220 * Math.sin(angle),
+      vx: 0, vy: 0,
+      fixed: false
+    });
+  }
+  var byId = {};
+  nodes.forEach(function (n) { byId[n.id] = n; });
+
+  // --- Физика: отталкивание всех от всех + пружины на рёбрах ---
+  var REPULSION = 26000;   // сила расталкивания вершин
+  var SPRING_LEN = 95;     // «спокойная» длина ребра
+  var SPRING_K = 0.02;     // жёсткость пружины
+  var CENTER_K = 0.012;    // лёгкое притяжение к центру холста
+  var DAMPING = 0.85;      // трение
+
+  function step() {
+    var i, j, a, b, dx, dy, d2, d, f;
+    for (i = 0; i < N; i++) {
+      a = nodes[i];
+      for (j = i + 1; j < N; j++) {
+        b = nodes[j];
+        dx = b.x - a.x; dy = b.y - a.y;
+        d2 = dx * dx + dy * dy;
+        if (d2 < 1) d2 = 1;
+        f = REPULSION / d2;
+        d = Math.sqrt(d2);
+        dx /= d; dy /= d;
+        a.vx -= f * dx; a.vy -= f * dy;
+        b.vx += f * dx; b.vy += f * dy;
+      }
+    }
+    EDGES.forEach(function (e) {
+      var a = byId[e[0]], b = byId[e[1]];
+      var dx = b.x - a.x, dy = b.y - a.y;
+      var d = Math.sqrt(dx * dx + dy * dy) || 1;
+      var f = SPRING_K * (d - SPRING_LEN);
+      dx /= d; dy /= d;
+      a.vx += f * dx; a.vy += f * dy;
+      b.vx -= f * dx; b.vy -= f * dy;
+    });
+    nodes.forEach(function (n) {
+      if (n.fixed) { n.vx = 0; n.vy = 0; return; }
+      n.vx += (CX - n.x) * CENTER_K;
+      n.vy += (CY - n.y) * CENTER_K;
+      n.vx *= DAMPING; n.vy *= DAMPING;
+      n.x += Math.max(-14, Math.min(14, n.vx));
+      n.y += Math.max(-14, Math.min(14, n.vy));
+      n.x = Math.max(n.r + 4, Math.min(W - n.r - 4, n.x));
+      n.y = Math.max(n.r + 16, Math.min(H - n.r - 6, n.y));
+    });
+  }
+
+  // Прогреваем раскладку заранее, чтобы граф открывался уже уложенным.
+  for (var warm = 0; warm < 400; warm++) step();
+
+  // --- Отрисовка ---
+  var svg = document.getElementById('chart');
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(name, attrs, parent) {
+    var n = document.createElementNS(NS, name);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    (parent || svg).appendChild(n);
+    return n;
+  }
+
+  var edgeG = el('g', {});
+  var nodeG = el('g', {});
+  var edgeEls = EDGES.map(function (e) {
+    var line = el('line', { 'class': 'edge' }, edgeG);
+    line._a = byId[e[0]]; line._b = byId[e[1]];
+    return line;
+  });
+  var nodeEls = nodes.map(function (n) {
+    var g = el('g', { 'class': 'node', tabindex: 0 }, nodeG);
+    var color = n.camp === 1 ? 'var(--series-1)' : 'var(--series-2)';
+    el('circle', { r: n.r, fill: color }, g);
+    var t = el('text', { y: 3.5 }, g);
+    t.textContent = String(n.id);
+    g._node = n;
+    n._el = g;
+    return g;
+  });
+  // Подписи двух главных персонажей.
+  var label1 = el('text', { 'class': 'role-label' });
+  label1.textContent = 'тренер';
+  var label34 = el('text', { 'class': 'role-label' });
+  label34.textContent = 'президент';
+
+  function render() {
+    edgeEls.forEach(function (line) {
+      line.setAttribute('x1', line._a.x); line.setAttribute('y1', line._a.y);
+      line.setAttribute('x2', line._b.x); line.setAttribute('y2', line._b.y);
+    });
+    nodeEls.forEach(function (g) {
+      g.setAttribute('transform', 'translate(' + g._node.x + ',' + g._node.y + ')');
+    });
+    var n1 = byId[1], n34 = byId[34];
+    label1.setAttribute('x', n1.x);
+    label1.setAttribute('y', n1.y - n1.r - 7);
+    label34.setAttribute('x', n34.x);
+    label34.setAttribute('y', n34.y - n34.r - 7);
+  }
+  render();
+
+  // Симуляция «остывает»: после прогрева гоняем её только пока есть жизнь.
+  var alive = 60;
+  function tick() {
+    if (alive > 0) {
+      alive--;
+      step();
+      render();
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  // --- Драг вершин ---
+  var dragging = null;
+  function svgPoint(ev) {
+    var rect = svg.getBoundingClientRect();
+    return {
+      x: (ev.clientX - rect.left) / rect.width * W,
+      y: (ev.clientY - rect.top) / rect.height * H
+    };
+  }
+  nodeEls.forEach(function (g) {
+    g.addEventListener('pointerdown', function (ev) {
+      dragging = g._node;
+      dragging.fixed = true;
+      g.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    });
+    g.addEventListener('pointermove', function (ev) {
+      if (!dragging) return;
+      var p = svgPoint(ev);
+      dragging.x = p.x; dragging.y = p.y;
+      alive = 120;                      // подогреть пружины
+      render();
+    });
+    g.addEventListener('pointerup', function () {
+      if (dragging) { dragging.fixed = false; dragging = null; alive = 120; }
+    });
+  });
+
+  // --- Ховер: тултип + подсветка друзей ---
+  var wrap = document.getElementById('wrap');
+  var tip = document.getElementById('tooltip');
+  var adj = {};
+  nodes.forEach(function (n) { adj[n.id] = {}; });
+  EDGES.forEach(function (e) { adj[e[0]][e[1]] = true; adj[e[1]][e[0]] = true; });
+
+  function role(id) {
+    if (id === 1) return 'тренер (Mr. Hi)';
+    if (id === 34) return 'президент клуба';
+    return null;
+  }
+  function showTip(n, ev) {
+    while (tip.firstChild) tip.removeChild(tip.firstChild);
+    var key = document.createElement('span');
+    key.className = 'key';
+    key.style.background = n.camp === 1 ? 'var(--series-1)' : 'var(--series-2)';
+    var val = document.createElement('span');
+    val.className = 'val';
+    val.textContent = 'Участник ' + n.id + (role(n.id) ? ' — ' + role(n.id) : '');
+    tip.appendChild(key); tip.appendChild(val);
+    var line2 = document.createElement('div');
+    line2.textContent = 'друзей: ' + n.deg + ' · лагерь ' +
+      (n.camp === 1 ? 'тренера' : 'президента');
+    tip.appendChild(line2);
+    tip.style.display = 'block';
+    var box = wrap.getBoundingClientRect();
+    var x = ev.clientX - box.left, y = ev.clientY - box.top;
+    tip.style.left = Math.round(x + (x > box.width * 0.7 ? -tip.offsetWidth - 14 : 14)) + 'px';
+    tip.style.top = Math.round(y - 12) + 'px';
+  }
+  function highlight(n) {
+    edgeEls.forEach(function (line) {
+      var lit = line._a === n || line._b === n;
+      line.setAttribute('class', 'edge' + (lit ? ' lit-' + n.camp : ''));
+    });
+    nodeEls.forEach(function (g) {
+      var m = g._node;
+      var near = m === n || adj[n.id][m.id];
+      g.setAttribute('class', 'node' + (near ? '' : ' dim'));
+    });
+  }
+  function clearHighlight() {
+    tip.style.display = 'none';
+    edgeEls.forEach(function (line) { line.setAttribute('class', 'edge'); });
+    nodeEls.forEach(function (g) { g.setAttribute('class', 'node'); });
+  }
+  nodeEls.forEach(function (g) {
+    g.addEventListener('pointerenter', function (ev) {
+      if (!dragging) { showTip(g._node, ev); highlight(g._node); }
+    });
+    g.addEventListener('pointermove', function (ev) {
+      if (!dragging) showTip(g._node, ev);
+    });
+    g.addEventListener('pointerleave', clearHighlight);
+    g.addEventListener('focus', function () {
+      var fake = { clientX: 0, clientY: 0 };
+      highlight(g._node);
+      var rect = svg.getBoundingClientRect();
+      fake.clientX = rect.left + g._node.x / W * rect.width;
+      fake.clientY = rect.top + g._node.y / H * rect.height;
+      showTip(g._node, fake);
+    });
+    g.addEventListener('blur', clearHighlight);
+  });
+
+  // --- Таблица участников ---
+  var tbody = document.getElementById('tbody');
+  nodes.slice().sort(function (a, b) { return b.deg - a.deg; })
+    .forEach(function (n) {
+      var tr = document.createElement('tr');
+      var td1 = document.createElement('td'); td1.textContent = n.id;
+      var td2 = document.createElement('td'); td2.className = 't';
+      td2.textContent = (n.camp === 1 ? 'тренера' : 'президента') +
+        (role(n.id) ? ' — ' + role(n.id) : '');
+      var td3 = document.createElement('td'); td3.textContent = n.deg;
+      tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+      tbody.appendChild(tr);
+    });
+
+  // ?dark в адресе — принудительно тёмная тема (для скриншотов).
+  if (location.search.indexOf('dark') !== -1) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Гамма-функция Γ(x)</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --axis:           #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --axis:           #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3987e5;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page:           #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --axis:           #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3987e5;
+  }
+
+  html, body { margin: 0; }
+  body.viz-root {
+    background: var(--page);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--text-primary);
+    display: flex;
+    justify-content: center;
+    padding: 24px 12px 40px;
+  }
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 20px 12px;
+    max-width: 960px;
+    width: 100%;
+    position: relative;
+  }
+  h1 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0 0 14px;
+    line-height: 1.45;
+  }
+  .plot-wrap { position: relative; outline: none; }
+  .plot-wrap:focus-visible { box-shadow: 0 0 0 2px var(--series-1); border-radius: 8px; }
+  svg { display: block; width: 100%; height: auto; }
+
+  .tick-label {
+    font-size: 11px;
+    fill: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .point-label {
+    font-size: 12px;
+    fill: var(--text-secondary);
+    font-weight: 600;
+  }
+  .point-sublabel { font-size: 11px; fill: var(--text-muted); font-weight: 400; }
+
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: none;
+    white-space: nowrap;
+    z-index: 5;
+  }
+  .tooltip .val {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+  .tooltip .key {
+    display: inline-block;
+    width: 14px; height: 0;
+    border-top: 2px solid var(--series-1);
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  details {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  summary { cursor: pointer; padding: 4px 0; }
+  table {
+    border-collapse: collapse;
+    margin: 8px 0 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td {
+    text-align: right;
+    padding: 4px 14px 4px 0;
+    border-bottom: 1px solid var(--gridline);
+    font-weight: 400;
+  }
+  th { color: var(--text-muted); font-size: 12px; }
+  td.note { text-align: left; color: var(--text-muted); }
+  .hint { font-size: 11.5px; color: var(--text-muted); margin: 8px 0 0; }
+</style>
+</head>
+<body class="viz-root">
+<div class="card">
+  <h1>Гамма-функция Γ(x)</h1>
+  <p class="subtitle">
+    Гладкая кривая, проходящая через точки факториала: <b>Γ(n) = (n−1)!</b> — они отмечены точками.
+    Пунктирные вертикали — асимптоты в нуле и отрицательных целых: там функция уходит в бесконечность,
+    поэтому (−1)!, (−2)!, … не существуют.
+  </p>
+  <div class="plot-wrap" id="plotWrap" tabindex="0" role="img"
+       aria-label="График гамма-функции от минус четырёх до пяти с точками факториала и асимптотами в отрицательных целых числах">
+    <svg id="chart" viewBox="0 0 920 520" aria-hidden="true"></svg>
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+  <details>
+    <summary>Таблица значений</summary>
+    <table id="valueTable">
+      <thead><tr><th>x</th><th>Γ(x)</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </details>
+  <p class="hint">Наводи мышь (или стрелки ←/→ с клавиатуры) — курсор-перекрестие покажет значение Γ(x) в любой точке.</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // --- Гамма: аппроксимация Ланцоша + формула отражения для x < 0.5 ---
+  var LANCZOS = [
+    0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+  ];
+  function gamma(x) {
+    if (x < 0.5) {
+      return Math.PI / (Math.sin(Math.PI * x) * gamma(1 - x));
+    }
+    x -= 1;
+    var a = LANCZOS[0];
+    var t = x + 7.5;
+    for (var i = 1; i < 9; i++) a += LANCZOS[i] / (x + i);
+    return Math.sqrt(2 * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * a;
+  }
+
+  // --- Геометрия ---
+  var W = 920, H = 520;
+  var M = { left: 46, right: 18, top: 14, bottom: 34 };
+  var X_MIN = -4.05, X_MAX = 5.15;
+  var Y_MIN = -7, Y_MAX = 25.5;
+  var sx = function (x) { return M.left + (x - X_MIN) / (X_MAX - X_MIN) * (W - M.left - M.right); };
+  var sy = function (y) { return M.top + (Y_MAX - y) / (Y_MAX - Y_MIN) * (H - M.top - M.bottom); };
+
+  var SING = [0, -1, -2, -3, -4];         // асимптоты
+  var EPS = 0.004;
+
+  var svg = document.getElementById('chart');
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(name, attrs, parent) {
+    var n = document.createElementNS(NS, name);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    (parent || svg).appendChild(n);
+    return n;
+  }
+
+  // clip области построения
+  var defs = el('defs', {});
+  var clip = el('clipPath', { id: 'plotClip' }, defs);
+  el('rect', { x: M.left, y: M.top, width: W - M.left - M.right, height: H - M.top - M.bottom }, clip);
+
+  // --- Сетка и оси ---
+  var grid = el('g', {});
+  var yTicks = [-5, 0, 5, 10, 15, 20, 25];
+  yTicks.forEach(function (y) {
+    if (y !== 0) {
+      el('line', { x1: M.left, x2: W - M.right, y1: sy(y), y2: sy(y),
+                   stroke: 'var(--gridline)', 'stroke-width': 1 }, grid);
+    }
+    var t = el('text', { x: M.left - 8, y: sy(y) + 3.5, 'text-anchor': 'end', 'class': 'tick-label' }, grid);
+    t.textContent = String(y);
+  });
+  // нулевая линия (базовая ось X) — чуть сильнее сетки
+  el('line', { x1: M.left, x2: W - M.right, y1: sy(0), y2: sy(0),
+               stroke: 'var(--axis)', 'stroke-width': 1 }, grid);
+  for (var xi = -4; xi <= 5; xi++) {
+    var t2 = el('text', { x: sx(xi), y: H - M.bottom + 18, 'text-anchor': 'middle', 'class': 'tick-label' }, grid);
+    t2.textContent = String(xi);
+  }
+  // подпись осей
+  var xl = el('text', { x: W - M.right, y: H - M.bottom + 18, 'text-anchor': 'start', 'class': 'tick-label' }, grid);
+  xl.textContent = '';
+  var yl = el('text', { x: M.left + 6, y: M.top + 8, 'text-anchor': 'start', 'class': 'tick-label' }, grid);
+  yl.textContent = 'Γ(x)';
+
+  // --- Асимптоты (пунктир, приглушённые — это аннотация, не данные) ---
+  SING.forEach(function (x) {
+    if (x < X_MIN || x > X_MAX) return;
+    el('line', { x1: sx(x), x2: sx(x), y1: M.top, y2: H - M.bottom,
+                 stroke: 'var(--text-muted)', 'stroke-width': 1,
+                 'stroke-dasharray': '3 5', opacity: 0.75 });
+  });
+
+  // --- Кривая: отдельный сегмент между соседними сингулярностями ---
+  var plotG = el('g', { 'clip-path': 'url(#plotClip)' });
+  var bounds = [X_MIN].concat(SING.slice().reverse().filter(function (s) { return s > X_MIN && s < X_MAX; }), [X_MAX]);
+  var samples = [];  // для ховера
+  for (var b = 0; b < bounds.length - 1; b++) {
+    var a0 = bounds[b] + EPS, a1 = bounds[b + 1] - EPS;
+    if (bounds[b + 1] === X_MAX) a1 = X_MAX;   // правый край — не сингулярность
+    if (bounds[b] === X_MIN) a0 = X_MIN;
+    var d = '';
+    var step = (a1 - a0) / Math.max(40, Math.round((a1 - a0) * 260));
+    for (var x = a0; x <= a1 + 1e-9; x += step) {
+      var y = gamma(x);
+      samples.push({ x: x, y: y });
+      var Y = Math.max(-400, Math.min(900, sy(y)));   // грубое ограничение координат
+      d += (d ? 'L' : 'M') + sx(x).toFixed(2) + ' ' + Y.toFixed(2);
+    }
+    el('path', { d: d, fill: 'none', stroke: 'var(--series-1)', 'stroke-width': 2,
+                 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, plotG);
+  }
+  samples.sort(function (p, q) { return p.x - q.x; });
+
+  // --- Точки факториала Γ(n) = (n−1)! ---
+  var factPoints = [
+    { n: 1, v: 1,  label: '0! = 1',  dx: 10,  dy: -10 },
+    { n: 2, v: 1,  label: '1! = 1',  dx: 10,  dy: -10 },
+    { n: 3, v: 2,  label: '2! = 2',  dx: 10,  dy: -8  },
+    { n: 4, v: 6,  label: '3! = 6',  dx: 12,  dy: 0   },
+    { n: 5, v: 24, label: '4! = 24', dx: -14, dy: 2   }
+  ];
+  factPoints.forEach(function (p) {
+    // 2px кольцо цвета поверхности, чтобы точка читалась поверх линии
+    el('circle', { cx: sx(p.n), cy: sy(p.v), r: 6.5, fill: 'var(--surface-1)' });
+    el('circle', { cx: sx(p.n), cy: sy(p.v), r: 4.5, fill: 'var(--series-1)' });
+    var t = el('text', { x: sx(p.n) + p.dx, y: sy(p.v) + p.dy + 4,
+                         'text-anchor': p.dx < 0 ? 'end' : 'start', 'class': 'point-label' });
+    t.textContent = p.label;
+  });
+
+  // Бонусная точка: Γ(1/2) = √π
+  var hx = 0.5, hv = Math.sqrt(Math.PI);
+  el('circle', { cx: sx(hx), cy: sy(hv), r: 6.5, fill: 'var(--surface-1)' });
+  el('circle', { cx: sx(hx), cy: sy(hv), r: 4.5, fill: 'none',
+                 stroke: 'var(--series-1)', 'stroke-width': 2 });
+  var ht = el('text', { x: sx(hx) + 10, y: sy(hv) - 26, 'text-anchor': 'start', 'class': 'point-label' });
+  ht.textContent = 'Γ(½) = √π';
+  var ht2 = el('text', { x: sx(hx) + 10, y: sy(hv) - 12, 'text-anchor': 'start', 'class': 'point-sublabel' });
+  ht2.textContent = '≈ 1.77';
+
+  // --- Ховер: перекрестие + тултип ---
+  var crossG = el('g', { style: 'display:none' });
+  var crossLine = el('line', { y1: M.top, y2: H - M.bottom, stroke: 'var(--text-muted)',
+                               'stroke-width': 1, opacity: 0.7 }, crossG);
+  el('circle', { r: 6.5, fill: 'var(--surface-1)' }, crossG);
+  var crossDotO = crossG.lastChild;
+  el('circle', { r: 4.5, fill: 'var(--series-1)' }, crossG);
+  var crossDot = crossG.lastChild;
+
+  var wrap = document.getElementById('plotWrap');
+  var tip = document.getElementById('tooltip');
+  var hit = el('rect', { x: M.left, y: M.top, width: W - M.left - M.right, height: H - M.top - M.bottom,
+                         fill: 'transparent' });
+
+  function fmt(v, digits) {
+    return v.toLocaleString('ru-RU', { maximumFractionDigits: digits, minimumFractionDigits: 0 });
+  }
+  function nearestSample(x) {
+    var lo = 0, hi = samples.length - 1;
+    while (hi - lo > 1) {
+      var mid = (lo + hi) >> 1;
+      if (samples[mid].x < x) lo = mid; else hi = mid;
+    }
+    return (x - samples[lo].x < samples[hi].x - x) ? lo : hi;
+  }
+
+  var curIdx = nearestSample(2);
+  function showAt(idx, fromKeyboard) {
+    curIdx = idx;
+    var p = samples[idx];
+    var X = sx(p.x), Y = sy(p.y);
+    crossG.style.display = '';
+    crossLine.setAttribute('x1', X); crossLine.setAttribute('x2', X);
+    var inView = p.y > Y_MIN && p.y < Y_MAX;
+    crossDot.style.display = inView ? '' : 'none';
+    crossDotO.style.display = inView ? '' : 'none';
+    crossDot.setAttribute('cx', X); crossDot.setAttribute('cy', Y);
+    crossDotO.setAttribute('cx', X); crossDotO.setAttribute('cy', Y);
+
+    // тултип — textContent, никакого innerHTML
+    while (tip.firstChild) tip.removeChild(tip.firstChild);
+    var key = document.createElement('span'); key.className = 'key';
+    var val = document.createElement('span'); val.className = 'val';
+    val.textContent = 'Γ(' + fmt(p.x, 2) + ') ≈ ' + fmt(p.y, 3);
+    tip.appendChild(key); tip.appendChild(val);
+    var nearInt = Math.round(p.x);
+    if (nearInt >= 1 && Math.abs(p.x - nearInt) < 0.03) {
+      var extra = document.createElement('div');
+      extra.textContent = '= ' + (nearInt - 1) + '! (факториал ' + (nearInt - 1) + ')';
+      tip.appendChild(extra);
+    }
+    tip.style.display = 'block';
+
+    var box = wrap.getBoundingClientRect();
+    var svgBox = svg.getBoundingClientRect();
+    var scale = svgBox.width / W;
+    var px = svgBox.left - box.left + X * scale;
+    var py = svgBox.top - box.top + Math.max(M.top * scale, Math.min((H - 90) * scale, (inView ? Y : 40) * scale));
+    tip.style.left = Math.round(px + (X > W * 0.72 ? -tip.offsetWidth - 14 : 14)) + 'px';
+    tip.style.top = Math.round(py - 18) + 'px';
+  }
+  function hide() {
+    crossG.style.display = 'none';
+    tip.style.display = 'none';
+  }
+
+  hit.addEventListener('pointermove', function (ev) {
+    var svgBox = svg.getBoundingClientRect();
+    var x = X_MIN + ((ev.clientX - svgBox.left) / svgBox.width * W - M.left) / (W - M.left - M.right) * (X_MAX - X_MIN);
+    showAt(nearestSample(x));
+  });
+  hit.addEventListener('pointerleave', hide);
+  wrap.addEventListener('keydown', function (ev) {
+    var stepPx = ev.shiftKey ? 60 : 12;
+    if (ev.key === 'ArrowRight') { showAt(Math.min(samples.length - 1, curIdx + stepPx), true); ev.preventDefault(); }
+    else if (ev.key === 'ArrowLeft') { showAt(Math.max(0, curIdx - stepPx), true); ev.preventDefault(); }
+    else if (ev.key === 'Escape') hide();
+  });
+  wrap.addEventListener('focus', function () { showAt(curIdx, true); });
+  wrap.addEventListener('blur', hide);
+
+  // --- Таблица значений ---
+  var rows = [
+    [-3.5, ''], [-2.5, ''], [-1.5, ''], [-0.5, ''],
+    [0.5, '= √π'], [1, '= 0!'], [1.5, '= (½)!'], [2, '= 1!'],
+    [2.5, ''], [3, '= 2!'], [4, '= 3!'], [5, '= 4!']
+  ];
+  var tbody = document.querySelector('#valueTable tbody');
+  rows.forEach(function (r) {
+    var tr = document.createElement('tr');
+    var td1 = document.createElement('td'); td1.textContent = fmt(r[0], 1);
+    var td2 = document.createElement('td'); td2.textContent = fmt(gamma(r[0]), 4);
+    var td3 = document.createElement('td'); td3.className = 'note'; td3.textContent = r[1];
+    tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+    tbody.appendChild(tr);
+  });
+
+  // ?dark в адресе — принудительно тёмная тема (для скриншотов)
+  if (location.search.indexOf('dark') !== -1) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
+</script>
+</body>
+</html>
